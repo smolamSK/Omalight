@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test for Edge Light. Runs against an isolated Quickshell process built
+# Smoke test for Omalight. Runs against an isolated Quickshell process built
 # from copies of the plugin files. It never touches omarchy-shell, and it writes
 # settings to a scratch file and never changes the real screen brightness.
 set -u
@@ -19,7 +19,7 @@ pass=0; fail=0
 ok()   { pass=$((pass+1)); echo "  PASS  $1"; }
 bad()  { fail=$((fail+1)); echo "  FAIL  $1"; }
 call() { quickshell ipc -p "$HARNESS" call edge call "$1" "${2:-}" 2>/dev/null; }
-glowLayers() { hyprctl layers 2>/dev/null | grep -c "omarchy-edge-light\b" || true; }
+glowLayers() { hyprctl layers 2>/dev/null | grep -c "omarchy-omalight\b" || true; }
 field() { call status | python3 -c "import json,sys; print(json.load(sys.stdin)['$1'])"; }
 isTrue()  { [ "$1" = "True" ] || [ "$1" = "true" ]; }
 isFalse() { [ "$1" = "False" ] || [ "$1" = "false" ]; }
@@ -31,7 +31,7 @@ for _ in $(seq 1 20); do pgrep -f "quickshell -p $ROOT" >/dev/null || break; sle
 (quickshell -p "$HARNESS" > "$SCRATCH/harness.log" 2>&1 &)
 for _ in $(seq 1 30); do call status >/dev/null && break; sleep 0.5; done
 
-echo "Edge Light smoke test (scratch: $SCRATCH)"
+echo "Omalight smoke test (scratch: $SCRATCH)"
 
 # Start state
 isFalse "$(field enabled)" && ok "starts with light off" || bad "starts with light off"

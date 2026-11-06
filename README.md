@@ -1,48 +1,66 @@
-# Edge Light for Omarchy
+# Omalight
 
-A soft light along the edges of your screen, to light your face on video calls.
+**A soft edge light for video calls, for Omarchy.**
 
-- **Bottom-bar icon** (lightbulb). Click it to open the control popup above the icon. The icon is highlighted while the light is on.
-- **Control popup** built from Omarchy's own UI kit: a power switch, and sliders for brightness, width, and warmth (2700 K warm to 6500 K cool).
-- **Full screen brightness** when the light turns on. The light does not restore your old brightness when it turns off.
-- **Keyboard shortcuts** to toggle the light and open the popup.
+Omalight lights your face by glowing along the edges of your screen, the way a
+ring light would. Turn it on from the bottom bar, pick the brightness, width,
+and warmth you like, and the glow covers every screen.
 
-The light is an overlay. It does not capture the camera or read any video.
-
-## Requirements
-
-- Omarchy with Hyprland and the Omarchy shell (`omarchy-shell`).
-- `omarchy brightness display`, which Omarchy provides. Without it the light still works, but the screen brightness is not changed.
+<p align="center">
+  <img src="preview.png" alt="Omalight: the control popup above the lightbulb icon on the bottom bar, with a warm glow along the screen edges" width="720">
+</p>
 
 ## Install
 
 ```bash
 omarchy plugin add https://github.com/vaibhavgupta5/Omalight.git --enable --yes
-omarchy bar put io.github.vaibhavgupta5.edge-light right
+omarchy bar put io.github.vaibhavgupta5.omalight right
 ```
 
-The second command puts the lightbulb in the right section of your bar. Run `omarchy plugin list` to check that the plugin is enabled.
+The second command puts the lightbulb on the right of your bottom bar. Check
+the plugin is on with `omarchy plugin list`.
 
 Remove it with:
 
 ```bash
-omarchy plugin remove io.github.vaibhavgupta5.edge-light --yes
+omarchy plugin remove io.github.vaibhavgupta5.omalight --yes
 ```
+
+## Features
+
+- **Lightbulb on the bottom bar.** It is lit while the light is on.
+- **Control popup** that opens above the icon. Escape or a click outside closes it.
+- **Power switch**, **brightness** (0–100%), **width** (4–120 px), and **warmth** (2700 K warm to 6500 K cool).
+- **Full screen brightness** when the light turns on, through Omarchy's own brightness helper.
+- **Every screen** gets the glow, or only the focused one (set in the settings file).
+- **Keyboard shortcuts** to turn the light on or off, and to open the popup.
+- **Uses your theme.** The popup takes its colours, corners, and type from your Omarchy theme.
+
+<p align="center">
+  <img src="docs/controls.png" alt="The Omalight popup with each control numbered and described" width="720">
+</p>
+
+## How it works
+
+<p align="center">
+  <img src="docs/how-it-works.png" alt="Diagram: bar icon, control popup, service, and edge light, with the shortcuts underneath" width="720">
+</p>
 
 ## Shortcuts
 
-Omarchy keybindings live in `~/.config/hypr/bindings.lua`. The plugin does not edit that file. To use these shortcuts, paste the lines into your file and reload Hyprland:
+Omarchy keybindings live in `~/.config/hypr/bindings.lua`. Omalight does not edit that file, so paste these lines into yours, then reload Hyprland:
 
 ```lua
-o.bind("SUPER + ALT + E", "Edge Light: toggle light", "omarchy-shell shell call io.github.vaibhavgupta5.edge-light lightToggle ''")
-o.bind("SUPER + ALT + P", "Edge Light: control popup", "omarchy-shell edge-light toggle")
+o.bind("SUPER + ALT + E", "Omalight: toggle light", "omarchy-shell shell call io.github.vaibhavgupta5.omalight lightToggle ''")
+o.bind("SUPER + ALT + P", "Omalight: control popup", "omarchy-shell omalight toggle")
 ```
 
-`SUPER + ALT + P` needs the icon on the bar, because the popup belongs to the icon. Check for conflicts first with `omarchy menu keybindings --print`.
+`SUPER + ALT + P` needs the icon on the bar, because the popup opens from the icon.
+Check for conflicts first with `omarchy menu keybindings --print`.
 
 ## Settings
 
-Settings are saved to `~/.config/omarchy/edge-light/settings.json`. You can edit the file by hand, or change them in the popup.
+Settings are saved to `~/.config/omarchy/omalight/settings.json`. The popup writes them for you. You can also edit the file by hand.
 
 | Key | Range | Default | Meaning |
 |---|---|---|---|
@@ -55,7 +73,11 @@ The light itself is not saved. It starts off after every restart of the shell.
 
 ## IPC
 
-Use `omarchy-shell shell call io.github.vaibhavgupta5.edge-light <method> <arg>` for these methods:
+These calls work from scripts, Hyprland bindings, and the Omarchy menu:
+
+```bash
+omarchy-shell shell call io.github.vaibhavgupta5.omalight <method> <arg>
+```
 
 | Method | Argument | Effect |
 |---|---|---|
@@ -64,30 +86,33 @@ Use `omarchy-shell shell call io.github.vaibhavgupta5.edge-light <method> <arg>`
 | `setValue` | JSON | Save settings, for example `'{"intensity":60}'` |
 | `status` | `''` | JSON with the current state |
 
-The popup has its own IPC target: `omarchy-shell edge-light toggle`, `open`, or `close`.
+The popup has its own target, which only exists while the icon is on the bar: `omarchy-shell omalight toggle`, `open`, or `close`.
 
-## What the plugin does on your system
+## What it does on your system
 
-- Runs inside `omarchy-shell`, with your user's permissions. It does not use `sudo` and makes no network requests.
-- Runs `omarchy brightness display --no-osd 100%` when the light turns on.
-- Reads the current Omarchy theme from `~/.local/state/omarchy/current/theme/colors.toml` and `shell.toml`, and the Hyprland rounding from `~/.config/hypr/looknfeel.lua`. It uses them to match the popup to your theme.
-- Writes its settings to `~/.config/omarchy/edge-light/settings.json`.
+- **Brightness:** when the light turns on, it runs `omarchy brightness display --no-osd 100%`. Your old brightness is not restored when it turns off.
+- **Theme:** reads `~/.local/state/omarchy/current/theme/colors.toml` and `shell.toml`, and the Hyprland rounding from `~/.config/hypr/looknfeel.lua`.
+- **Settings:** writes `~/.config/omarchy/omalight/settings.json`. Nothing else is saved.
+- **Runs** inside `omarchy-shell`, with your user's permissions. No `sudo`, and no network requests.
+- **Does not read** the camera, the microphone, or any video.
 
 ## Limits
 
-- The popup appears only while the icon is on the bar.
-- The light draws over fullscreen apps as well, because it is an overlay. There is no hide-on-fullscreen option yet.
-- Full screen brightness is not restored when the light turns off.
+- The popup opens only while the icon is on the bar.
+- The light draws over fullscreen apps too, because it is an overlay. There is no hide-on-fullscreen option yet.
+- Your old screen brightness is not restored when the light turns off.
 
 ## Development
 
 ```bash
-node --test test/unit/*.test.js     # pure logic: settings and colors
-test/harness/run-smoke.sh           # isolated Quickshell run: light, glow, settings
-omarchy plugin validate .           # manifest check
+node --test test/unit/*.test.js    # settings and colour logic
+test/harness/run-smoke.sh          # isolated Quickshell run: light, glow, settings
+omarchy plugin validate .          # manifest check
 ```
 
-The smoke test runs its own Quickshell process from copies of the plugin files, with a scratch settings file, and it never changes the real screen brightness.
+The smoke test builds its own Quickshell root from copies of the plugin files, with a scratch settings file. It never changes your screen brightness.
+
+The graphics are drawn by `docs/build_graphics.py`, which writes SVG and renders it with `rsvg-convert`.
 
 ## License
 

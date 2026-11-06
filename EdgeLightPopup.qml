@@ -2,7 +2,7 @@ import QtQuick
 import qs.Commons
 import qs.Ui
 
-// Edge Light control popup. It opens above its bar icon, the way Omarchy's
+// Omalight control popup. It opens above its bar icon, the way Omarchy's
 // own popups do, and is built from the same kit parts: hero header, switches,
 // section headers, and sliders. Escape and a click outside close it.
 KeyboardPanel {
@@ -73,7 +73,7 @@ KeyboardPanel {
         anchors.verticalCenter: parent.verticalCenter
 
         Text {
-          text: "Edge Light"
+          text: "Omalight"
           color: popup.kit.foreground
           font.family: popup.kit.fontFamily
           font.pixelSize: Style.font.subtitle

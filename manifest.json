@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "io.github.vaibhavgupta5.edge-light",
-  "name": "Edge Light",
+  "id": "io.github.vaibhavgupta5.omalight",
+  "name": "Omalight",
   "version": "1.0.0",
   "author": "vaibhav",
   "license": "MIT",
-  "description": "A soft edge light for video calls, with a bottom-bar icon and a popup for brightness, width, and warmth, styled to match the Omarchy theme.",
+  "description": "A soft edge light for video calls. Lights your face from the screen edges, with a bottom-bar icon and a popup for brightness, width, and warmth, styled to match the Omarchy theme.",
   "kinds": [
     "service",
     "panel",
@@ -18,8 +18,8 @@
     "barWidget": "EdgeLightWidget.qml"
   },
   "barWidget": {
-    "displayName": "Edge Light",
-    "description": "Opens the Edge Light control popup.",
+    "displayName": "Omalight",
+    "description": "Opens the Omalight control popup.",
     "category": "Utilities",
     "allowMultiple": false,
     "defaultSection": "right",

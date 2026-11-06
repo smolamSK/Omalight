@@ -95,7 +95,7 @@ Item {
       // Empty input region: clicks pass through to whatever is underneath.
       mask: Region {}
 
-      WlrLayershell.namespace: "omarchy-edge-light"
+      WlrLayershell.namespace: "omarchy-omalight"
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 

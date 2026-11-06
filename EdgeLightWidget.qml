@@ -3,19 +3,19 @@ import Quickshell
 import Quickshell.Io
 import qs.Ui
 
-// Bottom-bar icon for Edge Light. A left click opens the control popup above
+// Bottom-bar icon for Omalight. A left click opens the control popup above
 // the icon. The icon is highlighted while the light is on. The popup is an
 // Omarchy KeyboardPanel anchored to this button, so it appears next to the
 // icon, not at a fixed spot on the screen.
 BarWidget {
   id: root
-  moduleName: "io.github.vaibhavgupta5.edge-light"
+  moduleName: "io.github.vaibhavgupta5.omalight"
 
   // A third-party widget gets the bar's plugin API as `bar`. That API carries
   // a scoped `shell`, whose serviceFor(own id) returns the service with all the
   // state. A bar widget gets no `shell` property of its own.
   readonly property var pluginShell: bar && bar.shell ? bar.shell : null
-  readonly property var service: pluginShell ? pluginShell.serviceFor("io.github.vaibhavgupta5.edge-light") : null
+  readonly property var service: pluginShell ? pluginShell.serviceFor("io.github.vaibhavgupta5.omalight") : null
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -26,7 +26,7 @@ BarWidget {
     bar: root.bar
     text: "󰌵"
     active: root.service ? root.service.isOn : false
-    tooltipText: root.service && root.service.isOn ? "Edge Light: on" : "Edge Light: off"
+    tooltipText: root.service && root.service.isOn ? "Omalight: on" : "Omalight: off"
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.LeftButton && popupLoader.item) popupLoader.item.open = !popupLoader.item.open
     }
@@ -53,9 +53,9 @@ BarWidget {
   }
 
 
-  // Lets the shortcut open the popup: omarchy-shell edge-light toggle
+  // Lets the shortcut open the popup: omarchy-shell omalight toggle
   IpcHandler {
-    target: "edge-light"
+    target: "omalight"
 
     function toggle(): void { if (popupLoader.item) popupLoader.item.open = !popupLoader.item.open }
     function open(): void { if (popupLoader.item) popupLoader.item.open = true }

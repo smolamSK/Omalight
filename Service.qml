@@ -4,7 +4,7 @@ import Quickshell.Io
 import "lib/State.js" as State
 import "lib/Theme.js" as Theme
 
-// Service entry: owns all Edge Light state. The panel (EdgeLight.qml) renders
+// Service entry: owns all Omalight state. The panel (EdgeLight.qml) renders
 // the glow, and the bar popup (EdgeLightPopup.qml) reads and changes state
 // through this object.
 //
@@ -16,7 +16,7 @@ Item {
   readonly property string home: Quickshell.env("HOME")
   // Overridable so tests can use a scratch file instead of the user's config.
   readonly property string settingsPath: Quickshell.env("EDGE_LIGHT_SETTINGS")
-    || (home + "/.config/omarchy/edge-light/settings.json")
+    || (home + "/.config/omarchy/omalight/settings.json")
   readonly property string settingsDir: settingsPath.substring(0, settingsPath.lastIndexOf("/"))
   readonly property string themePath: Quickshell.env("EDGE_LIGHT_THEME")
     || (home + "/.local/state/omarchy/current/theme/colors.toml")
@@ -47,7 +47,7 @@ Item {
     try {
       settingsFile.setText(JSON.stringify(service.settings, null, 2) + "\n")
     } catch (e) {
-      console.warn("edge-light: could not save settings:", e)
+      console.warn("omalight: could not save settings:", e)
     }
   }
 
