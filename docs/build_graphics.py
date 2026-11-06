@@ -1,248 +1,343 @@
 #!/usr/bin/env python3
-"""Draws the Omalight graphics as SVG and renders them to PNG.
+"""Builds the Omalight graphics: HTML pages rendered to PNG with headless Chromium.
 
 Run from the repo root:  python3 docs/build_graphics.py
-Needs rsvg-convert (librsvg). Colours come from the Omarchy theme used at the
-time of drawing, so the images match the look of the popup.
+Needs the Python package `playwright` with its Chromium build.
+
+Design rules come from the global design skills (landing-page-design and
+minimalist-ui): a fixed spacing scale, Tailwind type steps, flat backgrounds,
+no italics, no ultra bold, no hyphens in copy, balanced headings, and a
+geometric sans with a monospace for numbers and keystrokes. The popup mock
+keeps Omarchy's own monospace and colours, because it depicts the real UI.
 """
 import os
-import subprocess
-import textwrap
+from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
-# Omarchy theme colours (Tokyo-style dark theme used for the screenshots)
-BG = "#0B0C16"
-FG = "#DDF7FF"
-ACCENT = "#82FB9C"
-ACTIVE = "#50F872"
-EDGE_A = "#26A269"
-EDGE_B = "#2EC27E"
-MUTED = "#6A6E95"
-LIGHT = "#FFCE96"   # warm light, about 4000 K
-FONT = "JetBrainsMono Nerd Font, JetBrains Mono, monospace"
-BULB = "\U000F0335"  # nf-md-lightbulb (Nerd Font)
+# Chrome palette (flat, from the skill's dark list and neutral greys)
+BG = "#181818"
+CARD = "#1F1F1F"
+LINE = "#313131"
+LINE_SOFT = "#272727"
+MUTED = "#9B9B9B"
+WHITE = "#FFFFFF"
+# Product colours (Omarchy theme, as shown in the popup)
+OMA_BG = "#0B0C16"
+OMA_FG = "#DDF7FF"
+OMA_EDGE_A = "#26A269"
+OMA_EDGE_B = "#2EC27E"
+OMA_ACTIVE = "#50F872"
+WARM = "#FFCE96"  # the light itself, about 4000 K
+
+BASE_CSS = f"""
+:root {{
+  --bg: {BG}; --card: {CARD}; --line: {LINE}; --line-soft: {LINE_SOFT};
+  --muted: {MUTED}; --white: {WHITE}; --warm: {WARM}; --active: {OMA_ACTIVE};
+}}
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+html, body {{ background: var(--bg); color: var(--white); }}
+body {{
+  font-family: "Instrument Sans", system-ui, sans-serif;
+  font-size: 16px; line-height: 24px; font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}}
+.mono {{ font-family: "JetBrains Mono", monospace; }}
+p {{ text-wrap: pretty; color: var(--muted); }}
+h1, h2, h3 {{ text-wrap: balance; font-weight: 500; }}
+h1 {{
+  font-size: 60px; line-height: 60px; letter-spacing: -0.04em;
+  background: linear-gradient(90deg, #FFFFFF, #9B9B9B);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}}
+h2 {{ font-size: 36px; line-height: 40px; letter-spacing: -0.02em; color: var(--white); }}
+h3 {{ font-size: 20px; line-height: 28px; color: var(--white); }}
+.eyebrow {{
+  font-size: 12px; line-height: 16px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+}}
+.lead {{ font-size: 20px; line-height: 28px; color: var(--muted); }}
+.small {{ font-size: 14px; line-height: 20px; }}
+.caption {{ font-size: 12px; line-height: 16px; color: var(--muted); }}
+.card {{ background: var(--card); border: 1px solid var(--line); border-radius: 8px; }}
+kbd {{
+  font-family: "JetBrains Mono", monospace; font-size: 14px; line-height: 20px;
+  color: var(--white); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 4px; padding: 8px 12px;
+}}
+"""
+
+# The control popup, drawn the way Omarchy draws it: square corners, a 2px
+# gradient border, the popup background, JetBrains Mono, and the theme's
+# control alphas. Sizes are the real popup sizes at scale 1.
+def popup_html(on=True, brightness=70, width=28, warmth=4000, hint=None, badges=None):
+    badges = badges or {}
+    def badge(key, side="left", top=0):
+        # Badges hang off their own row, so they stay aligned with it.
+        if key not in badges:
+            return ""
+        pos = "left:-36px" if side == "left" else "right:-36px"
+        return f'<span class="badge" style="{pos};top:{top}px">{key}</span>'
+    status = f"On &middot; {brightness}% &middot; {warmth}K" if on else "Off"
+    hint = hint or ("On now. Drag the sliders to change it." if on else
+                    "Off. Switch it on to light your face. The screen goes to full brightness.")
+    def slider(label, value_txt, frac, key):
+        return f"""
+        <div class="slider-row">{badge(key, top=8)}
+        <div class="row-label"><span>{label}</span><span>{value_txt}</span></div>
+        <div class="track"><div class="fill" style="width:{frac*100:.1f}%"></div>
+          <div class="knob" style="left:{frac*100:.1f}%"></div></div></div>"""
+    return f"""
+    <div class="omcard">
+      <div class="hero">
+        <span class="bulb {'on' if on else ''}">&#xF0335;</span>
+        <div class="title-col"><div class="name">Omalight</div><div class="status">{status}</div></div>
+        <div class="switch {'on' if on else ''}"><span class="sw-knob"></span></div>
+        {badge('1', side='right', top=10)}
+        {badge('2', top=10)}
+      </div>
+      <div class="rule"></div>
+      <div class="section">LIGHT</div>
+      {slider('Brightness', f'{brightness}%', brightness/100, '3')}
+      {slider('Width', f'{width} px', (width-4)/116, '4')}
+      {slider('Warmth', f'{warmth} K', (warmth-2700)/3800, '5')}
+      <div class="rule"></div>
+      <div class="hint-row">{badge('6', top=0)}<div class="hint">{hint}</div></div>
+    </div>"""
+
+POPUP_CSS = f"""
+.omcard {{
+  position: relative; width: 300px; padding: 14px;
+  background: {OMA_BG};
+  border: 2px solid transparent;
+  background-image: linear-gradient({OMA_BG}, {OMA_BG}), linear-gradient(90deg, {OMA_EDGE_A}, {OMA_EDGE_B});
+  background-origin: border-box; background-clip: padding-box, border-box;
+  font-family: "JetBrains Mono", monospace; color: {OMA_FG};
+  border-radius: 0;
+}}
+.omcard .hero {{ position: relative; display: flex; align-items: center; height: 44px; }}
+.omcard .bulb {{ font-size: 22px; opacity: 0.6; width: 30px; font-family: "JetBrains Mono", "Symbols Nerd Font", monospace; }}
+.omcard .bulb.on {{ opacity: 1; }}
+.omcard .title-col {{ flex: 1; margin-left: 4px; }}
+.omcard .name {{ font-size: 15px; font-weight: 700; line-height: 18px; }}
+.omcard .status {{ font-size: 10.5px; line-height: 14px; opacity: 0.6; margin-top: 2px; }}
+.omcard .switch {{
+  width: 44px; height: 22px; border: 1px solid rgba(221,247,255,0.4); position: relative;
+  background: {OMA_BG};
+}}
+.omcard .switch .sw-knob {{ position: absolute; top: 3px; left: 3px; width: 16px; height: 14px; background: {OMA_FG}; }}
+.omcard .switch.on {{ background: rgba(221,247,255,0.18); }}
+.omcard .switch.on .sw-knob {{ left: 25px; }}
+.omcard .rule {{ height: 1px; background: rgba(221,247,255,0.14); margin: 10px 0; }}
+.omcard .section {{ font-size: 10px; letter-spacing: 1.2px; opacity: 0.6; margin: 4px 0 8px; }}
+.omcard .row-label {{ display: flex; justify-content: space-between; font-size: 12px; line-height: 16px; margin-top: 10px; }}
+.omcard .track {{ position: relative; height: 4px; margin: 12px 0 0; background: rgba(221,247,255,0.18); }}
+.omcard .fill {{ position: absolute; left: 0; top: 0; bottom: 0; background: {OMA_FG}; }}
+.omcard .knob {{ position: absolute; top: -4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 6px; background: {OMA_FG}; border: 2px solid {OMA_BG}; }}
+.omcard .slider-row {{ position: relative; }}
+.omcard .hint-row {{ position: relative; }}
+.omcard .title-col {{ position: relative; }}
+.omcard .hint {{ font-size: 10.5px; line-height: 16px; opacity: 0.7; margin-top: 4px; }}
+.badge {{
+  position: absolute; width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: #82FB9C; color: #0B0C16; font: 600 13px/1 "Instrument Sans", sans-serif;
+}}
+"""
+
+def page(body_html, width, height, extra_css=""):
+    return f"""<!doctype html><html><head><meta charset="utf-8">
+<style>{BASE_CSS}{POPUP_CSS}{extra_css}
+html, body {{ width: {width}px; height: {height}px; overflow: hidden; }}
+</style></head><body>{body_html}</body></html>"""
 
 
-def svg_doc(w, h, body, defs=""):
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
-            f'viewBox="0 0 {w} {h}" font-family="{FONT}">'
-            f'<defs>{defs}</defs>'
-            f'<rect width="{w}" height="{h}" fill="{BG}"/>{body}</svg>')
+# 1. Hero preview, the marketplace's first image (1280 by 720)
+def hero_html():
+    glow_css = f"""
+    .screen {{ position: absolute; left: 600px; top: 56px; width: 616px; height: 608px;
+      background: {OMA_BG}; border: 1px solid {LINE}; overflow: hidden; }}
+    .glow {{ position: absolute; background: {WARM}; filter: blur(36px); opacity: 0.8; }}
+    .glow.t {{ left: -40px; right: -40px; top: -90px; height: 120px; }}
+    .glow.b {{ left: -40px; right: -40px; bottom: -90px; height: 120px; }}
+    .glow.l {{ top: -40px; bottom: -40px; left: -90px; width: 120px; }}
+    .glow.r {{ top: -40px; bottom: -40px; right: -90px; width: 120px; }}
+    .call {{ position: absolute; left: 40px; top: 40px; width: 400px; height: 360px;
+      border: 1px solid {LINE_SOFT}; background: #111216; overflow: hidden; }}
+    .call .head {{ height: 36px; border-bottom: 1px solid {LINE_SOFT}; padding: 10px 14px;
+      font-size: 12px; color: {MUTED}; }}
+    .call .face {{ position: absolute; left: 130px; top: 84px; width: 140px; height: 140px; border-radius: 70px; background: #23252d; }}
+    .call .body {{ position: absolute; left: 90px; top: 236px; width: 220px; height: 124px; border-radius: 110px 110px 0 0; background: #23252d; }}
+    .bar {{ position: absolute; left: 0; right: 0; bottom: 0; height: 26px; background: {OMA_BG};
+      border-top: 1px solid rgba(221,247,255,0.15); }}
+    .bar .bulb {{ position: absolute; right: 22px; top: 4px; font-family: "JetBrains Mono", "Symbols Nerd Font", monospace;
+      font-size: 15px; color: {OMA_ACTIVE}; }}
+    .pop {{ position: absolute; right: 44px; bottom: 44px; }}
+    """
+    html = f"""
+    <div class="wrap">
+      <section class="copy">
+        <div class="eyebrow">Omarchy plugin</div>
+        <h1>Light your face on every video call</h1>
+        <p class="lead">Omalight glows along the edges of your screen, so you look good without
+          moving a lamp. One click on the bottom bar sets the brightness, width, and warmth.</p>
+        <div class="install card">
+          <div class="caption">Install in one command</div>
+          <code class="mono">omarchy plugin add<br>https://github.com/vaibhavgupta5/Omalight.git<br>--enable --yes</code>
+        </div>
+        <div class="chips">
+          <span>Reads no camera or video</span><span>No network access</span><span>MIT license</span>
+        </div>
+      </section>
+      <div class="screen">
+        <div class="glow t"></div><div class="glow b"></div><div class="glow l"></div><div class="glow r"></div>
+        <div class="call"><div class="head">Video call</div><div class="face"></div><div class="body"></div></div>
+        <div class="pop">{popup_html(on=True, brightness=70, width=28, warmth=4000)}</div>
+        <div class="bar"><span class="bulb">&#xF0335;</span></div>
+      </div>
+    </div>"""
+    css = f"""
+    .wrap {{ position: relative; width: 1280px; height: 720px; }}
+    .copy {{ position: absolute; left: 64px; top: 80px; width: 480px; }}
+    .copy .eyebrow {{ margin-bottom: 16px; }}
+    .copy h1 {{ margin-bottom: 24px; }}
+    .copy .lead {{ margin-bottom: 40px; }}
+    .install {{ padding: 16px 24px; margin-bottom: 24px; }}
+    .install .caption {{ margin-bottom: 8px; }}
+    .install code {{ font-size: 14px; line-height: 24px; color: {WHITE}; }}
+    .chips {{ display: flex; flex-wrap: wrap; gap: 8px; }}
+    .chips span {{ font-size: 12px; line-height: 16px; color: {MUTED}; border: 1px solid {LINE};
+      padding: 8px 12px; }}
+    """
+    return page(html, 1280, 720, glow_css + css)
 
 
-def text(x, y, s, size=14, fill=FG, weight="normal", opacity=1.0, anchor="start", spacing=0):
-    s = s.replace("&", "&amp;").replace("<", "&lt;")
-    return (f'<text x="{x}" y="{y}" font-size="{size}" fill="{fill}" font-weight="{weight}" '
-            f'opacity="{opacity}" text-anchor="{anchor}" letter-spacing="{spacing}">{s}</text>')
-
-
-def edge_glow(w, h, band=120):
-    """Warm light along all four screen edges, fading inward."""
-    defs = (
-        f'<linearGradient id="gt" x1="0" y1="0" x2="0" y2="1">'
-        f'<stop offset="0" stop-color="{LIGHT}" stop-opacity="0.75"/>'
-        f'<stop offset="1" stop-color="{LIGHT}" stop-opacity="0"/></linearGradient>'
-        f'<linearGradient id="gb" x1="0" y1="1" x2="0" y2="0">'
-        f'<stop offset="0" stop-color="{LIGHT}" stop-opacity="0.75"/>'
-        f'<stop offset="1" stop-color="{LIGHT}" stop-opacity="0"/></linearGradient>'
-        f'<linearGradient id="gl" x1="0" y1="0" x2="1" y2="0">'
-        f'<stop offset="0" stop-color="{LIGHT}" stop-opacity="0.75"/>'
-        f'<stop offset="1" stop-color="{LIGHT}" stop-opacity="0"/></linearGradient>'
-        f'<linearGradient id="gr" x1="1" y1="0" x2="0" y2="0">'
-        f'<stop offset="0" stop-color="{LIGHT}" stop-opacity="0.75"/>'
-        f'<stop offset="1" stop-color="{LIGHT}" stop-opacity="0"/></linearGradient>'
-    )
-    body = (
-        f'<rect x="0" y="0" width="{w}" height="{band}" fill="url(#gt)"/>'
-        f'<rect x="0" y="{h - band}" width="{w}" height="{band}" fill="url(#gb)"/>'
-        f'<rect x="0" y="0" width="{band}" height="{h}" fill="url(#gl)"/>'
-        f'<rect x="{w - band}" y="0" width="{band}" height="{h}" fill="url(#gr)"/>'
-    )
-    return defs, body
-
-
-def slider(x, y, w, frac, label, value):
-    """Label and value on one line, a rounded track below, a knob on the fill."""
-    fill_w = w * frac
-    body = text(x, y, label, size=11, opacity=0.6, spacing=0.8)
-    body += text(x + w, y, value, size=11, anchor="end")
-    body += f'<rect x="{x}" y="{y + 10}" width="{w}" height="4" rx="2" fill="{FG}" fill-opacity="0.18"/>'
-    body += f'<rect x="{x}" y="{y + 10}" width="{fill_w:.1f}" height="4" rx="2" fill="{FG}"/>'
-    body += (f'<rect x="{x + fill_w - 6:.1f}" y="{y + 6}" width="12" height="12" rx="6" '
-             f'fill="{FG}" stroke="{BG}" stroke-width="2"/>')
-    return body
-
-
-def toggle(x, y, on):
-    """Boxy switch: square track, square knob, matches the kit's sharp corners."""
-    track_fill = FG if on else BG
-    body = (f'<rect x="{x}" y="{y}" width="44" height="22" fill="{BG}" '
-            f'stroke="{FG}" stroke-opacity="0.4" stroke-width="1"/>')
-    if on:
-        body += f'<rect x="{x + 1}" y="{y + 1}" width="42" height="20" fill="{FG}" fill-opacity="0.18"/>'
-        body += f'<rect x="{x + 24}" y="{y + 4}" width="16" height="14" fill="{FG}"/>'
-    else:
-        body += f'<rect x="{x + 4}" y="{y + 4}" width="16" height="14" fill="{FG}"/>'
-    return body
-
-
-def popup(x, y, scale=1.0, on=True, brightness=70, width=28, warmth=4000, pointer=True):
-    """The control popup, drawn with the same parts as the live card."""
-    s = scale
-    W, H = 300 * s, 316 * s
-    pad = 14 * s
-    defs = (f'<linearGradient id="pg" x1="0" y1="0" x2="1" y2="0">'
-            f'<stop offset="0" stop-color="{EDGE_A}"/><stop offset="1" stop-color="{EDGE_B}"/>'
-            f'</linearGradient>')
-    body = f'<rect x="{x}" y="{y}" width="{W}" height="{H}" fill="url(#pg)"/>'
-    body += f'<rect x="{x + 2 * s}" y="{y + 2 * s}" width="{W - 4 * s}" height="{H - 4 * s}" fill="{BG}"/>'
-    cx = x + pad + 2 * s
-    cw = W - 2 * (pad + 2 * s)
-    # hero
-    body += text(cx, y + 36 * s, BULB, size=22 * s, fill=FG, opacity=1.0 if on else 0.6)
-    body += text(cx + 34 * s, y + 30 * s, "Omalight", size=15 * s, weight="bold")
-    status = f"On · {brightness}% · {warmth}K" if on else "Off"
-    body += text(cx + 34 * s, y + 46 * s, status, size=10.5 * s, opacity=0.6)
-    body += toggle(x + W - pad - 2 * s - 44 * s, y + 24 * s, on).replace('44"', f'{44 * s}"')
-    body += f'<rect x="{cx}" y="{y + 66 * s}" width="{cw}" height="1" fill="{FG}" fill-opacity="0.14"/>'
-    body += text(cx, y + 90 * s, "LIGHT", size=10 * s, opacity=0.6, spacing=1.2)
-    body += slider(cx, y + 110 * s, cw, brightness / 100, "Brightness", f"{brightness}%")
-    body += slider(cx, y + 160 * s, cw, (width - 4) / 116, "Width", f"{width} px")
-    body += slider(cx, y + 210 * s, cw, (warmth - 2700) / 3800, "Warmth", f"{warmth} K")
-    body += f'<rect x="{cx}" y="{y + 252 * s}" width="{cw}" height="1" fill="{FG}" fill-opacity="0.14"/>'
-    hint = "On now. Drag the sliders to change it." if on else \
-        "Off. Switch it on to light your face. The screen goes to full brightness."
-    body += text(cx, y + 280 * s, hint[:44], size=10.5 * s, opacity=0.7)
-    if len(hint) > 44:
-        body += text(cx, y + 296 * s, hint[44:], size=10.5 * s, opacity=0.7)
-    # pointer down to the bulb on the bottom bar
-    if pointer:
-        body += (f'<polygon points="{x + W - 40 * s},{y + H} {x + W - 28 * s},{y + H} '
-                 f'{x + W - 34 * s},{y + H + 8 * s}" fill="{EDGE_B}"/>')
-    return defs, body
-
-
-def bottom_bar(w, y, h=26, bulb_on=True):
-    body = f'<rect x="0" y="{y}" width="{w}" height="{h}" fill="{BG}"/>'
-    body += f'<rect x="0" y="{y}" width="{w}" height="1" fill="{FG}" fill-opacity="0.15"/>'
-    body += text(w - 60, y + 18, BULB, size=15, fill=ACCENT if bulb_on else FG, opacity=1 if bulb_on else 0.6)
-    return body
-
-
-def write(name, svg, out_png, out_w=None):
-    svg_path = os.path.join(HERE, name + ".svg")
-    png_path = out_png
-    with open(svg_path, "w", encoding="utf-8") as f:
-        f.write(svg)
-    cmd = ["rsvg-convert", "-o", png_path]
-    if out_w:
-        cmd += ["-w", str(out_w)]
-    subprocess.run(cmd + [svg_path], check=True)
-    print("wrote", os.path.relpath(png_path, ROOT), os.path.relpath(svg_path, ROOT))
-
-
-# 1. Hero preview, shown first on the marketplace (1280x720)
-def hero():
-    W, H = 1280, 720
-    gdefs, gbody = edge_glow(W, H, band=130)
-    body = gbody
-    body += text(70, 120, "Omalight", size=64, weight="bold")
-    body += text(72, 166, "A soft edge light for video calls. Built for Omarchy.", size=24, opacity=0.7)
-    # a stand-in video call window
-    body += (f'<rect x="120" y="230" width="640" height="370" fill="none" stroke="{FG}" '
-             f'stroke-opacity="0.15"/>')
-    body += (f'<rect x="120" y="230" width="640" height="34" fill="{FG}" fill-opacity="0.06"/>')
-    body += text(140, 253, "Video call", size=14, opacity=0.6)
-    body += f'<circle cx="440" cy="400" r="92" fill="{FG}" fill-opacity="0.08"/>'
-    body += f'<ellipse cx="440" cy="560" rx="150" ry="110" fill="{FG}" fill-opacity="0.08"/>'
-    pdefs, pbody = popup(959, 362, scale=1.0, on=True, brightness=70, width=28, warmth=4000)
-    body += pbody
-    body += bottom_bar(W, H - 26, bulb_on=True)
-    write("hero", svg_doc(W, H, body, gdefs + pdefs), os.path.join(ROOT, "preview.png"))
-
-
-# 2. Annotated popup, what each control does (1100x640)
-def controls():
-    W, H = 1100, 640
-    sc, px, py = 1.45, 600, 90
-    pdefs, pbody = popup(px, py, scale=sc, on=True, brightness=70, width=28, warmth=4000, pointer=False)
-    body = pbody
-    # badge sits just left of each control, on the card edge
-    rows = [(24, "1"), (46, "2"), (118, "3"), (168, "4"), (218, "5"), (290, "6")]
-    for dy, num in rows:
-        cy = py + dy * sc
-        bx = px - 36
-        body += f'<rect x="{bx}" y="{cy - 12}" width="26" height="26" fill="{ACCENT}"/>'
-        body += text(bx + 13, cy + 6, num, size=15, weight="bold", fill=BG, anchor="middle")
+# 2. Annotated popup: what each control does (1200 by 720)
+def controls_html():
     notes = [
         ("1", "Power switch", "Turns the light on or off."),
-        ("2", "Status line", "On or Off, with brightness and warmth."),
-        ("3", "Brightness", "How strong the light is, 0 to 100%."),
-        ("4", "Width", "How thick the edge band is, 4 to 120 px."),
-        ("5", "Warmth", "Warm 2700 K to cool 6500 K."),
-        ("6", "Hint", "What you can do next."),
+        ("2", "Status line", "On or Off, with the brightness and warmth in use."),
+        ("3", "Brightness", "How strong the light is, from 0 to 100 percent."),
+        ("4", "Width", "How thick the edge band is, from 4 to 120 pixels."),
+        ("5", "Warmth", "From 2700 K, a warm amber, to 6500 K, a cool white."),
+        ("6", "Hint", "Tells you what you can do next."),
     ]
-    body += text(40, 80, "What each control does", size=24, weight="bold")
-    for i, (num, title, desc) in enumerate(notes):
-        yy = 150 + i * 80
-        body += f'<rect x="40" y="{yy - 24}" width="26" height="26" fill="{ACCENT}"/>'
-        body += text(53, yy - 5, num, size=15, weight="bold", fill=BG, anchor="middle")
-        body += text(84, yy - 4, title, size=18, weight="bold")
-        body += text(84, yy + 18, desc, size=14, opacity=0.7)
-    write("controls", svg_doc(W, H, body, pdefs), os.path.join(ROOT, "docs", "controls.png"))
+    rows = "".join(
+        f"""<li><span class="num">{n}</span>
+              <div><h3>{t}</h3><p class="small">{d}</p></div></li>"""
+        for n, t, d in notes)
+    html = f"""
+    <div class="wrap">
+      <section class="left">
+        <div class="eyebrow">The control popup</div>
+        <h2>What each control does</h2>
+        <p class="lead lead-sm">Six parts on one card. Every change lands on the light as you drag.</p>
+        <ol class="notes">{rows}</ol>
+      </section>
+      <div class="pop">{popup_html(on=True, brightness=70, width=28, warmth=4000,
+          badges={k: True for k in '123456'})}</div>
+    </div>"""
+    css = f"""
+    .wrap {{ position: relative; width: 1200px; height: 800px; }}
+    .left {{ position: absolute; left: 80px; top: 96px; width: 500px; }}
+    .left .eyebrow {{ margin-bottom: 16px; }}
+    .left h2 {{ margin-bottom: 16px; }}
+    .lead-sm {{ font-size: 18px; line-height: 28px; margin-bottom: 40px; }}
+    .notes {{ list-style: none; display: flex; flex-direction: column; gap: 24px; }}
+    .notes li {{ align-items: center; }}
+    .notes li {{ display: flex; gap: 16px; align-items: flex-start; }}
+    .notes .num {{ flex: 0 0 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+      background: #82FB9C; color: #0B0C16; font: 600 15px/1 "Instrument Sans", sans-serif; }}
+    .notes h3 {{ font-size: 18px; line-height: 24px; margin-bottom: 4px; }}
+    .pop {{ position: absolute; left: 690px; top: 230px; transform: scale(1.3); transform-origin: 0 0; }}
+    """
+    return page(html, 1200, 800, css)
 
 
-# 3. How it works (1280x640)
-def how_it_works():
-    W, H = 1280, 680
-    body = text(50, 70, "How Omalight works", size=34, weight="bold")
-    body += text(52, 104, "One click on the bottom bar, and the light covers every screen edge.", size=17, opacity=0.7)
+# 3. How it works (1280 by 720)
+def how_html():
     steps = [
-        ("1", "Bottom-bar icon", "Click the lightbulb, or press SUPER + ALT + P."),
-        ("2", "Control popup", "Opens above the icon. Power, brightness, width, warmth."),
-        ("3", "Service", "Holds the state and saves your settings to a file."),
-        ("4", "Edge light", "A click-through glow on each screen's edges."),
+        ("01", "Bottom bar icon", "Click the lightbulb, or press SUPER ALT P."),
+        ("02", "Control popup", "Opens above the icon with the power switch and three sliders."),
+        ("03", "Service", "Holds the state, and saves your settings to a file."),
+        ("04", "Edge light", "A click through glow along each screen edge."),
     ]
-    bw, bh, gap = 270, 170, 40
-    x0, y0 = 50, 150
-    for i, (num, title, desc) in enumerate(steps):
-        x = x0 + i * (bw + gap)
-        body += f'<rect x="{x}" y="{y0}" width="{bw}" height="{bh}" fill="none" stroke="{FG}" stroke-opacity="0.25"/>'
-        body += f'<rect x="{x}" y="{y0}" width="{bw}" height="4" fill="{ACCENT}"/>'
-        body += text(x + 18, y0 + 44, num, size=28, weight="bold", fill=ACCENT)
-        body += text(x + 52, y0 + 44, title, size=20, weight="bold")
-        for j, line in enumerate(textwrap.wrap(desc, width=24)):
-            body += text(x + 18, y0 + 84 + j * 22, line, size=14, opacity=0.75)
-        if i < len(steps) - 1:
-            ax = x + bw + 6
-            body += (f'<polygon points="{ax},{y0 + bh / 2 - 9} {ax + 16},{y0 + bh / 2} '
-                     f'{ax},{y0 + bh / 2 + 9}" fill="{FG}" fill-opacity="0.5"/>')
-    # side facts
-    fy = 380
-    body += text(50, fy, "What it touches on your system", size=20, weight="bold")
-    facts = [
-        "Brightness: sets the screen to 100% when the light turns on (omarchy brightness).",
-        "Theme: reads your Omarchy colours so the popup matches the theme you use.",
-        "Settings: saved to ~/.config/omarchy/edge-light/settings.json, nothing else.",
-        "Network: none. No camera, no microphone, no video is read.",
+    cards = "".join(
+        f"""<div class="step card"><div class="step-num mono">{n}</div>
+              <h3>{t}</h3><p class="small">{d}</p></div>"""
+        for n, t, d in steps)
+    touches = [
+        "Brightness: sets the screen to 100 percent when the light turns on.",
+        "Theme: matches the popup to your Omarchy colours.",
+        "Settings: saved to ~/.config/omarchy/omalight/settings.json, and nothing else.",
+        "Network and camera: none. No video or audio is read.",
     ]
-    for i, f in enumerate(facts):
-        body += f'<rect x="50" y="{fy + 26 + i * 40 - 14}" width="8" height="8" fill="{ACCENT}"/>'
-        body += text(72, fy + 26 + i * 40, f, size=15, opacity=0.85)
-    # shortcuts strip
-    sy = 618
-    body += f'<rect x="50" y="{sy - 28}" width="1180" height="1" fill="{FG}" fill-opacity="0.15"/>'
-    body += text(50, sy, "SHORTCUTS", size=13, opacity=0.6, spacing=1.2)
-    body += text(220, sy, "SUPER + ALT + E", size=16, weight="bold", fill=ACCENT)
-    body += text(420, sy, "turn the light on or off", size=15, opacity=0.8)
-    body += text(760, sy, "SUPER + ALT + P", size=16, weight="bold", fill=ACCENT)
-    body += text(960, sy, "open the popup", size=15, opacity=0.8)
-    write("how-it-works", svg_doc(W, H, body), os.path.join(ROOT, "docs", "how-it-works.png"))
+    tlist = "".join(f"<li>{t}</li>" for t in touches)
+    html = f"""
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">How it works</div>
+        <h2>One click turns the light on across every screen</h2>
+      </header>
+      <section class="flow">{cards}</section>
+      <div class="lower">
+        <section class="touches">
+          <h3>What it touches on your system</h3>
+          <ul>{tlist}</ul>
+        </section>
+        <section class="keys card">
+          <h3>Keyboard shortcuts</h3>
+          <div class="key-row"><div><kbd>SUPER</kbd> <kbd>ALT</kbd> <kbd>E</kbd></div><p class="small">Turn the light on or off</p></div>
+          <div class="key-row"><div><kbd>SUPER</kbd> <kbd>ALT</kbd> <kbd>P</kbd></div><p class="small">Open or close the popup</p></div>
+        </section>
+      </div>
+    </div>"""
+    css = f"""
+    .wrap {{ position: relative; width: 1280px; height: 720px; padding: 64px; }}
+    header {{ margin-bottom: 40px; }}
+    header .eyebrow {{ margin-bottom: 16px; }}
+    .flow {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 40px; }}
+    .step {{ padding: 24px; height: 200px; }}
+    .step-num {{ font-size: 12px; line-height: 16px; color: #82FB9C; margin-bottom: 16px; letter-spacing: 0.06em; }}
+    .step h3 {{ margin-bottom: 8px; }}
+    .lower {{ display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }}
+    .touches h3 {{ margin-bottom: 16px; }}
+    .touches ul {{ list-style: none; display: flex; flex-direction: column; gap: 16px; }}
+    .touches li {{ font-size: 16px; line-height: 24px; color: {MUTED}; padding-left: 20px; position: relative; text-wrap: pretty; max-width: 640px; }}
+    .touches li::before {{ content: ""; position: absolute; left: 0; top: 8px; width: 8px; height: 8px; background: #82FB9C; }}
+    .keys {{ padding: 24px; }}
+    .keys h3 {{ margin-bottom: 16px; }}
+    .key-row {{ display: flex; justify-content: space-between; align-items: center; padding: 16px 0;
+      border-top: 1px solid {LINE}; }}
+    .key-row p {{ text-align: right; }}
+    """
+    return page(html, 1280, 720, css)
+
+
+def render(pages):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        for html, width, height, out_path in pages:
+            ctx = browser.new_context(viewport={"width": width, "height": height}, device_scale_factor=2)
+            pg = ctx.new_page()
+            pg.set_content(html, wait_until="load")
+            pg.wait_for_timeout(200)
+            pg.screenshot(path=out_path, full_page=False)
+            ctx.close()
+            print("wrote", os.path.relpath(out_path, ROOT), f"({width * 2}x{height * 2})")
+        browser.close()
 
 
 if __name__ == "__main__":
-    hero()
-    controls()
-    how_it_works()
+    # keep the HTML sources next to the images, so the design can be re-read
+    sources = {
+        "hero": (hero_html(), 1280, 720, os.path.join(ROOT, "preview.png")),
+        "controls": (controls_html(), 1200, 800, os.path.join(HERE, "controls.png")),
+        "how-it-works": (how_html(), 1280, 720, os.path.join(HERE, "how-it-works.png")),
+    }
+    for name, (html, _, _, _) in sources.items():
+        with open(os.path.join(HERE, name + ".html"), "w", encoding="utf-8") as f:
+            f.write(html)
+    render(sources.values())

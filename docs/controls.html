@@ -1,0 +1,134 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+:root {
+  --bg: #181818; --card: #1F1F1F; --line: #313131; --line-soft: #272727;
+  --muted: #9B9B9B; --white: #FFFFFF; --warm: #FFCE96; --active: #50F872;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--white); }
+body {
+  font-family: "Instrument Sans", system-ui, sans-serif;
+  font-size: 16px; line-height: 24px; font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.mono { font-family: "JetBrains Mono", monospace; }
+p { text-wrap: pretty; color: var(--muted); }
+h1, h2, h3 { text-wrap: balance; font-weight: 500; }
+h1 {
+  font-size: 60px; line-height: 60px; letter-spacing: -0.04em;
+  background: linear-gradient(90deg, #FFFFFF, #9B9B9B);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+h2 { font-size: 36px; line-height: 40px; letter-spacing: -0.02em; color: var(--white); }
+h3 { font-size: 20px; line-height: 28px; color: var(--white); }
+.eyebrow {
+  font-size: 12px; line-height: 16px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+}
+.lead { font-size: 20px; line-height: 28px; color: var(--muted); }
+.small { font-size: 14px; line-height: 20px; }
+.caption { font-size: 12px; line-height: 16px; color: var(--muted); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+kbd {
+  font-family: "JetBrains Mono", monospace; font-size: 14px; line-height: 20px;
+  color: var(--white); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 4px; padding: 8px 12px;
+}
+
+.omcard {
+  position: relative; width: 300px; padding: 14px;
+  background: #0B0C16;
+  border: 2px solid transparent;
+  background-image: linear-gradient(#0B0C16, #0B0C16), linear-gradient(90deg, #26A269, #2EC27E);
+  background-origin: border-box; background-clip: padding-box, border-box;
+  font-family: "JetBrains Mono", monospace; color: #DDF7FF;
+  border-radius: 0;
+}
+.omcard .hero { position: relative; display: flex; align-items: center; height: 44px; }
+.omcard .bulb { font-size: 22px; opacity: 0.6; width: 30px; font-family: "JetBrains Mono", "Symbols Nerd Font", monospace; }
+.omcard .bulb.on { opacity: 1; }
+.omcard .title-col { flex: 1; margin-left: 4px; }
+.omcard .name { font-size: 15px; font-weight: 700; line-height: 18px; }
+.omcard .status { font-size: 10.5px; line-height: 14px; opacity: 0.6; margin-top: 2px; }
+.omcard .switch {
+  width: 44px; height: 22px; border: 1px solid rgba(221,247,255,0.4); position: relative;
+  background: #0B0C16;
+}
+.omcard .switch .sw-knob { position: absolute; top: 3px; left: 3px; width: 16px; height: 14px; background: #DDF7FF; }
+.omcard .switch.on { background: rgba(221,247,255,0.18); }
+.omcard .switch.on .sw-knob { left: 25px; }
+.omcard .rule { height: 1px; background: rgba(221,247,255,0.14); margin: 10px 0; }
+.omcard .section { font-size: 10px; letter-spacing: 1.2px; opacity: 0.6; margin: 4px 0 8px; }
+.omcard .row-label { display: flex; justify-content: space-between; font-size: 12px; line-height: 16px; margin-top: 10px; }
+.omcard .track { position: relative; height: 4px; margin: 12px 0 0; background: rgba(221,247,255,0.18); }
+.omcard .fill { position: absolute; left: 0; top: 0; bottom: 0; background: #DDF7FF; }
+.omcard .knob { position: absolute; top: -4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 6px; background: #DDF7FF; border: 2px solid #0B0C16; }
+.omcard .slider-row { position: relative; }
+.omcard .hint-row { position: relative; }
+.omcard .title-col { position: relative; }
+.omcard .hint { font-size: 10.5px; line-height: 16px; opacity: 0.7; margin-top: 4px; }
+.badge {
+  position: absolute; width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: #82FB9C; color: #0B0C16; font: 600 13px/1 "Instrument Sans", sans-serif;
+}
+
+    .wrap { position: relative; width: 1200px; height: 800px; }
+    .left { position: absolute; left: 80px; top: 96px; width: 500px; }
+    .left .eyebrow { margin-bottom: 16px; }
+    .left h2 { margin-bottom: 16px; }
+    .lead-sm { font-size: 18px; line-height: 28px; margin-bottom: 40px; }
+    .notes { list-style: none; display: flex; flex-direction: column; gap: 24px; }
+    .notes li { align-items: center; }
+    .notes li { display: flex; gap: 16px; align-items: flex-start; }
+    .notes .num { flex: 0 0 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+      background: #82FB9C; color: #0B0C16; font: 600 15px/1 "Instrument Sans", sans-serif; }
+    .notes h3 { font-size: 18px; line-height: 24px; margin-bottom: 4px; }
+    .pop { position: absolute; left: 690px; top: 230px; transform: scale(1.3); transform-origin: 0 0; }
+    
+html, body { width: 1200px; height: 800px; overflow: hidden; }
+</style></head><body>
+    <div class="wrap">
+      <section class="left">
+        <div class="eyebrow">The control popup</div>
+        <h2>What each control does</h2>
+        <p class="lead lead-sm">Six parts on one card. Every change lands on the light as you drag.</p>
+        <ol class="notes"><li><span class="num">1</span>
+              <div><h3>Power switch</h3><p class="small">Turns the light on or off.</p></div></li><li><span class="num">2</span>
+              <div><h3>Status line</h3><p class="small">On or Off, with the brightness and warmth in use.</p></div></li><li><span class="num">3</span>
+              <div><h3>Brightness</h3><p class="small">How strong the light is, from 0 to 100 percent.</p></div></li><li><span class="num">4</span>
+              <div><h3>Width</h3><p class="small">How thick the edge band is, from 4 to 120 pixels.</p></div></li><li><span class="num">5</span>
+              <div><h3>Warmth</h3><p class="small">From 2700 K, a warm amber, to 6500 K, a cool white.</p></div></li><li><span class="num">6</span>
+              <div><h3>Hint</h3><p class="small">Tells you what you can do next.</p></div></li></ol>
+      </section>
+      <div class="pop">
+    <div class="omcard">
+      <div class="hero">
+        <span class="bulb on">&#xF0335;</span>
+        <div class="title-col"><div class="name">Omalight</div><div class="status">On &middot; 70% &middot; 4000K</div></div>
+        <div class="switch on"><span class="sw-knob"></span></div>
+        <span class="badge" style="right:-36px;top:10px">1</span>
+        <span class="badge" style="left:-36px;top:10px">2</span>
+      </div>
+      <div class="rule"></div>
+      <div class="section">LIGHT</div>
+      
+        <div class="slider-row"><span class="badge" style="left:-36px;top:8px">3</span>
+        <div class="row-label"><span>Brightness</span><span>70%</span></div>
+        <div class="track"><div class="fill" style="width:70.0%"></div>
+          <div class="knob" style="left:70.0%"></div></div></div>
+      
+        <div class="slider-row"><span class="badge" style="left:-36px;top:8px">4</span>
+        <div class="row-label"><span>Width</span><span>28 px</span></div>
+        <div class="track"><div class="fill" style="width:20.7%"></div>
+          <div class="knob" style="left:20.7%"></div></div></div>
+      
+        <div class="slider-row"><span class="badge" style="left:-36px;top:8px">5</span>
+        <div class="row-label"><span>Warmth</span><span>4000 K</span></div>
+        <div class="track"><div class="fill" style="width:34.2%"></div>
+          <div class="knob" style="left:34.2%"></div></div></div>
+      <div class="rule"></div>
+      <div class="hint-row"><span class="badge" style="left:-36px;top:0px">6</span><div class="hint">On now. Drag the sliders to change it.</div></div>
+    </div></div>
+    </div></body></html>
