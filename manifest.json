@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.vaibhavgupta5.edge-light",
+  "name": "Edge Light",
+  "version": "1.0.0",
+  "author": "vaibhav",
+  "license": "MIT",
+  "description": "A soft edge light for video calls, with a bottom-bar icon and a popup for brightness, width, and warmth, styled to match the Omarchy theme.",
+  "kinds": [
+    "service",
+    "panel",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "panel": "EdgeLight.qml",
+    "barWidget": "EdgeLightWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Edge Light",
+    "description": "Opens the Edge Light control popup.",
+    "category": "Utilities",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {},
+    "schema": []
+  }
+}
