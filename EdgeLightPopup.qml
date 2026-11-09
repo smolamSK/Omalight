@@ -12,7 +12,7 @@ KeyboardPanel {
 
   // Fallbacks keep the popup valid before the service is bound.
   readonly property var s: service ? service.settings
-    : ({ intensity: 70, width: 28, kelvin: 4000, scope: "all" })
+    : ({ intensity: 70, width: 28, kelvin: 4000, cursorHole: 110, scope: "all" })
   readonly property bool lightOn: service ? service.isOn : false
   readonly property var kit: bar
 
@@ -121,7 +121,8 @@ KeyboardPanel {
       model: [
         { key: "intensity", label: "Brightness", from: 0, to: 100, suffix: "%" },
         { key: "width", label: "Width", from: 4, to: 120, suffix: " px" },
-        { key: "kelvin", label: "Warmth", from: 2700, to: 6500, suffix: " K" }
+        { key: "kelvin", label: "Warmth", from: 2700, to: 6500, suffix: " K" },
+        { key: "cursorHole", label: "Gap around mouse", from: 0, to: 300, suffix: " px", zero: "Off" }
       ]
 
       Column {
@@ -145,7 +146,9 @@ KeyboardPanel {
           Text {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: Math.round(popup.s[modelData.key]) + modelData.suffix
+            text: (modelData.zero && Math.round(popup.s[modelData.key]) === 0)
+              ? modelData.zero
+              : Math.round(popup.s[modelData.key]) + modelData.suffix
             color: popup.kit.foreground
             font.family: popup.kit.fontFamily
             font.pixelSize: Style.font.bodySmall

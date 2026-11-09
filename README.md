@@ -67,6 +67,7 @@ Settings are saved to `~/.config/omarchy/omalight/settings.json`. The popup writ
 | `intensity` | 0–100 | 70 | Brightness of the light, in percent |
 | `width` | 4–120 | 28 | Thickness of each edge band, in px |
 | `kelvin` | 2700–6500 | 4000 | Warmth of the light, warm to cool |
+| `cursorHole` | 0–300 | 110 | Radius in px around the mouse kept free of light (0 = off) |
 | `scope` | `all`, `focused` | `all` | Light every screen, or only the focused one |
 
 The light itself is not saved. It starts off after every restart of the shell.

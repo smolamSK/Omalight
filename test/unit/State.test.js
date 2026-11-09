@@ -17,7 +17,7 @@ test("normalize replaces invalid enums and non-numeric values with defaults", ()
 
 test("normalize keeps valid values and drops removed keys", () => {
   const s = State.normalize({ intensity: 40, width: 30, kelvin: 3200, scope: "focused", auto: "camera" })
-  assert.deepEqual(s, { intensity: 40, width: 30, kelvin: 3200, scope: "focused" })
+  assert.deepEqual(s, { intensity: 40, width: 30, kelvin: 3200, cursorHole: 110, scope: "focused" })
 })
 
 test("parseSettings falls back to defaults on broken JSON", () => {
@@ -34,4 +34,11 @@ test("merge returns a new object and the patch wins", () => {
   const out = State.merge(base, { b: 3 })
   assert.deepEqual(out, { a: 1, b: 3 })
   assert.deepEqual(base, { a: 1, b: 2 })
+})
+
+test("normalize clamps the cursor gap and allows 0 to turn it off", () => {
+  assert.equal(State.normalize({ cursorHole: 999 }).cursorHole, 300)
+  assert.equal(State.normalize({ cursorHole: -5 }).cursorHole, 0)
+  assert.equal(State.normalize({ cursorHole: 0 }).cursorHole, 0)
+  assert.equal(State.normalize({}).cursorHole, State.DEFAULTS.cursorHole)
 })
